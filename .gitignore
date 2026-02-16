@@ -1,0 +1,39 @@
+# GameTank BASIC SDK - Git Ignore
+
+# === Build Outputs ===
+# Compiled programs
+*.prg
+
+# GameTank ROM images (keep demo .gtr files if desired)
+*.gtr
+
+# Binary files (banks, code extracts)
+*.bin
+
+# Symbol files
+*.sym
+
+# Generated loader assembly
+*_loader.asm
+
+# === Temporary Files ===
+*.tmp
+*.bak
+*~
+
+# === Editor/IDE ===
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+*.code-workspace
+
+# === OS Files ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Optional: Keep specific demo ROMs ===
+# Uncomment to track demo ROMs in git:
+# !sdk_demo.gtr
+# !sprite_demo.gtr
