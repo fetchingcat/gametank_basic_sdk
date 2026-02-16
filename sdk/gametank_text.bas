@@ -256,16 +256,6 @@ SUB gt_putchar(c AS BYTE) SHARED STATIC
     DIM gx AS BYTE
     DIM gy AS BYTE
     
-    ' Handle newline
-    IF c = 10 OR c = 13 THEN
-        _gt_cursor_x = 0
-        _gt_cursor_y = _gt_cursor_y + 8
-        IF _gt_cursor_y >= 128 THEN
-            _gt_cursor_y = 0
-        END IF
-        EXIT SUB
-    END IF
-    
     ' Only print ASCII 32-90
     IF c < 32 OR c > 90 THEN
         EXIT SUB
@@ -347,14 +337,14 @@ SUB gt_print_word(n AS WORD) SHARED STATIC
     
     ' Extract digits (ones to ten-thousands)
     FOR i = 0 TO 4
-        digits(i) = temp MOD 10
+        digits(CBYTE(i)) = CBYTE(temp MOD 10)
         temp = temp / 10
     NEXT i
     
     ' Print from most significant
     started = 0
     FOR i = 4 TO 0 STEP -1
-        d = digits(i)
+        d = digits(CBYTE(i))
         IF d > 0 OR started = 1 OR i = 0 THEN
             CALL gt_putchar(48 + d)
             started = 1

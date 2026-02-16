@@ -227,24 +227,19 @@ SUB gt_pop_rom_bank() SHARED STATIC
 END SUB
 
 SUB gt_box(x AS BYTE, y AS BYTE, w AS BYTE, h AS BYTE, c AS BYTE) SHARED STATIC
-    POKE GT_DMA_FLAGS, gt_dma OR DMA_COLORFILL OR DMA_OPAQUE
+    POKE GT_DMA_FLAGS, gt_dma OR DMA_COLORFILL OR DMA_OPAQUE OR DMA_IRQ
     POKE GT_VX, x
     POKE GT_VY, y
     POKE GT_BWIDTH, w
     POKE GT_BHEIGHT, h
     POKE GT_BCOLOR, NOT c
+    gt_draw_busy = 1
     POKE GT_BSTART, 1
     ASM
-    LDY #16
-._bwr:
-    LDX #128
-._bwc:
-    NOP
-    NOP
-    DEX
-    BNE ._bwc
-    DEY
-    BNE ._bwr
+    CLI
+._boxwait:
+    LDA V_gt_draw_busy
+    BNE ._boxwait
     END ASM
     POKE GT_DMA_FLAGS, gt_dma
 END SUB
