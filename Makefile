@@ -24,9 +24,9 @@ ifeq ($(OS),Windows_NT)
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S),Darwin)
-        PLATFORM := macos
+        PLATFORM := macOS
     else
-        PLATFORM := linux
+        PLATFORM := Linux
     endif
     EXE_EXT :=
 endif
@@ -111,7 +111,7 @@ run:
 ifndef FILE
 	$(error FILE is required. Usage: make run FILE=examples/game.gtr)
 endif
-ifndef EMULATOR
+ifeq ($(strip $(EMULATOR)),)
 	$(error GAMETANK_EMULATOR is not set. Point it to your GameTank Emulator executable.)
 endif
 ifeq ($(OS),Windows_NT)
