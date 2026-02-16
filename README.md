@@ -52,13 +52,22 @@ make clean FILE=examples/hello          # Remove build artifacts
 | `gt_flip()` | Swap display buffers |
 | `gt_show()` | vsync + flip combined |
 | `gt_cls(color)` | Clear screen |
+| `gt_border(color)` | Fill overscan border with color (typically 0) |
 | `gt_box(x,y,w,h,color)` | Filled rectangle |
+| `gt_pset(x,y,color)` | Plot single pixel |
+| `gt_direct_start()` | Begin batch pixel mode |
+| `gt_plot(x,y,color)` | Fast pixel plot (batch mode only) |
+| `gt_direct_end()` | End batch pixel mode |
 | `gt_read_pad()` | Read gamepads |
 | `gt_set_gram(page)` | Select GRAM page (0-7) |
 | `gt_load_sprite(src,gx,gy,w,h)` | Load sprite ROM→GRAM |
-| `gt_draw_sprite(gx,gy,vx,vy,w,h,opaque)` | Draw from GRAM |
-| `gt_rom_bank(n)` | Switch ROM bank (0-127) |
 | `gt_load_sprite_banked(bank,src,gx,gy,w,h)` | Load from banked ROM |
+| `gt_draw_sprite(gx,gy,vx,vy,w,h,opaque)` | Draw from GRAM |
+| `gt_gram_poke(x,y,color)` | Write single pixel to GRAM |
+| `gt_gram_fill(x,y,w,h,color)` | Fill rectangle in GRAM |
+| `gt_rom_bank(n)` | Switch ROM bank (0-127) |
+| `gt_push_rom_bank()` | Push current bank to stack |
+| `gt_pop_rom_bank()` | Restore previous bank from stack |
 
 ### Text (`gametank_text.bas`)
 
@@ -80,6 +89,9 @@ make clean FILE=examples/hello          # Remove build artifacts
 | `gt_audio_init()` | Load audio firmware |
 | `gt_beep(note,frames)` | Play MIDI note (36-96) |
 | `gt_audio_tick()` | Update audio (call each frame) |
+| `gt_audio_stop()` | Stop all audio playback |
+| `gt_audio_param(param,value)` | Set raw audio parameter |
+| `gt_audio_flush()` | Send buffered params to coprocessor |
 | `gt_sfx_blip()` | UI blip |
 | `gt_sfx_shoot()` | Shoot sound |
 | `gt_sfx_explode()` | Explosion |

@@ -263,6 +263,16 @@ SUB gt_cls(c AS BYTE) SHARED STATIC
     POKE GT_DMA_FLAGS, gt_dma
 END SUB
 
+' Fill border/overscan region with color c (typically 0 for black).
+' The safe playable area is 126x113. Borders: top 7, bottom 8,
+' left 1, right 1 — matching the C SDK's queue_clear_border layout.
+SUB gt_border(c AS BYTE) SHARED STATIC
+    CALL gt_box(0,   0,   127, 7,   c)
+    CALL gt_box(0,   7,   1,   121, c)
+    CALL gt_box(1,   120, 127, 8,   c)
+    CALL gt_box(127, 0,   1,   120, c)
+END SUB
+
 SUB gt_read_pad() SHARED STATIC
     DIM lo AS BYTE
     DIM hi AS BYTE
