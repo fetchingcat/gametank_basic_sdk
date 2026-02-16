@@ -1,5 +1,4 @@
-# GameTank BASIC SDK - Cross-Platform Build System
-# =================================================
+# GameTank BASIC SDK Makefile
 #
 # Prerequisites:
 #   Windows: winget install GnuWin32.Make
@@ -16,7 +15,7 @@
 #   make compile FILE=examples/blackjack.bas
 #   make run FILE=examples/blackjack.gtr
 
-# ── OS Detection ────────────────────────────────────────────
+# OS Detection
 ifeq ($(OS),Windows_NT)
     PLATFORM := windows
     EXE_EXT  := .exe
@@ -31,28 +30,27 @@ else
     EXE_EXT :=
 endif
 
-# ── SDK Root (directory containing this Makefile) ───────────
+# SDK Root
 SDK_ROOT := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
-# ── Version ─────────────────────────────────────────────────
+# Version
 ifeq ($(OS),Windows_NT)
     SDK_VERSION := $(shell type "$(SDK_ROOT)\VERSION")
 else
     SDK_VERSION := $(shell cat "$(SDK_ROOT)/VERSION")
 endif
 
-# ── Tool Paths ──────────────────────────────────────────────
+# Tool Paths
 XCBASIC := $(SDK_ROOT)/bin/$(PLATFORM)/xcbasic3$(EXE_EXT)
 DASM    := $(SDK_ROOT)/bin/$(PLATFORM)/dasm$(EXE_EXT)
 
-# ── Emulator (user-configurable via env var or make arg) ────
-# Set GAMETANK_EMULATOR to the path of your GameTank Emulator
+# Emulator path (set GAMETANK_EMULATOR env var or pass as make arg)
 EMULATOR ?= $(GAMETANK_EMULATOR)
 
-# ── Compiler Flags ──────────────────────────────────────────
+# Compiler Flags
 XCFLAGS := --target=gametank --output-format=gtr
 
-# ── Derived Paths from FILE ────────────────────────────────
+# Derived Paths
 ifdef FILE
     BASENAME := $(basename $(FILE))
     GTRFILE  := $(BASENAME).gtr
@@ -60,17 +58,17 @@ ifdef FILE
     MAPFILE  := $(BASENAME).map
 endif
 
-# ── Build Output Directory ──────────────────────────────────
+# Build Output Directory
 BUILD_DIR := $(SDK_ROOT)/build
 
-# ── Windows path helper ─────────────────────────────────────
+# Windows path helper
 ifeq ($(OS),Windows_NT)
     FP = $(subst /,\,$(1))
 else
     FP = $(1)
 endif
 
-# ── Targets ─────────────────────────────────────────────────
+# Targets
 .PHONY: help compile run build clean
 
 help:
@@ -85,7 +83,6 @@ help:
 	@echo Platform: $(PLATFORM)
 	@echo Compiler: $(XCBASIC)
 
-# ── Compile ─────────────────────────────────────────────────
 compile:
 ifndef FILE
 	$(error FILE is required. Usage: make compile FILE=examples/game.bas)
@@ -106,7 +103,6 @@ else
 endif
 	@echo Compiled: $(GTRFILE)
 
-# ── Run ─────────────────────────────────────────────────────
 run:
 ifndef FILE
 	$(error FILE is required. Usage: make run FILE=examples/game.gtr)
@@ -120,7 +116,6 @@ else
 	"$(EMULATOR)" "$(abspath $(FILE))" &
 endif
 
-# ── Build (compile + run) ──────────────────────────────────
 build:
 ifndef FILE
 	$(error FILE is required. Usage: make build FILE=examples/game.bas)
@@ -128,7 +123,6 @@ endif
 	"$(MAKE)" compile FILE=$(FILE)
 	"$(MAKE)" run FILE=$(GTRFILE) EMULATOR="$(EMULATOR)"
 
-# ── Clean ───────────────────────────────────────────────────
 clean:
 ifndef FILE
 	$(error FILE is required. Usage: make clean FILE=examples/game (without extension))
