@@ -10,13 +10,37 @@ Write games for the [GameTank](https://gametank.zone) console in BASIC. Compiles
 - **macOS:** included with Xcode Command Line Tools (`xcode-select --install`)
 - **Linux:** `sudo apt install make` (or equivalent)
 
-Set the `GAMETANK_EMULATOR` environment variable to your emulator path, then:
+### Emulator Setup
+
+If `gte` or `GameTankEmulator` is on your PATH, the SDK finds it automatically:
 
 ```bash
 make build FILE=examples/hello.bas
 ```
 
-This compiles and runs in one step. You can also `make compile` and `make run` separately.
+Otherwise, set the `GAMETANK_EMULATOR` environment variable to point to your emulator:
+
+```bash
+# One-time (Linux/macOS)
+export GAMETANK_EMULATOR=/path/to/GameTankEmulator
+
+# One-time (Windows)
+set GAMETANK_EMULATOR=C:\path\to\GameTankEmulator.exe
+
+# Or pass it directly
+make build FILE=examples/hello.bas GAMETANK_EMULATOR=/path/to/GameTankEmulator
+```
+
+Run `make help` to check whether the emulator was detected.
+
+### Usage
+
+```bash
+make compile FILE=examples/hello.bas    # Compile .bas to .gtr
+make run FILE=examples/hello.gtr        # Run .gtr in emulator
+make build FILE=examples/hello.bas      # Compile + run in one step
+make clean FILE=examples/hello          # Remove build artifacts
+```
 
 ## SDK Reference
 

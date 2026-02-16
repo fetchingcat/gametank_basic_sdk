@@ -44,8 +44,20 @@ endif
 XCBASIC := $(SDK_ROOT)/bin/$(PLATFORM)/xcbasic3$(EXE_EXT)
 DASM    := $(SDK_ROOT)/bin/$(PLATFORM)/dasm$(EXE_EXT)
 
-# Emulator path (set GAMETANK_EMULATOR env var or pass as make arg)
-EMULATOR ?= $(GAMETANK_EMULATOR)
+# Emulator auto-detection: checks GAMETANK_EMULATOR, then PATH for gte / GameTankEmulator
+ifeq ($(origin GAMETANK_EMULATOR),undefined)
+    ifeq ($(OS),Windows_NT)
+        EMULATOR := $(or \
+            $(shell where gte 2>nul), \
+            $(shell where GameTankEmulator 2>nul))
+    else
+        EMULATOR := $(or \
+            $(shell which gte 2>/dev/null), \
+            $(shell which GameTankEmulator 2>/dev/null))
+    endif
+else
+    EMULATOR := $(GAMETANK_EMULATOR)
+endif
 
 # Compiler Flags
 XCFLAGS := --target=gametank --output-format=gtr
@@ -79,7 +91,9 @@ help:
 	@echo   make build FILE=examples/game.bas     Compile + run
 	@echo   make clean FILE=examples/game         Remove build artifacts
 	@echo Configuration:
-	@echo   GAMETANK_EMULATOR=path/to/emulator    Set emulator path
+	@echo   Emulator auto-detected from PATH (gte or GameTankEmulator)
+	@echo   Override: GAMETANK_EMULATOR=path/to/emulator
+	@echo   Detected: $(or $(EMULATOR),(not found))
 	@echo Platform: $(PLATFORM)
 	@echo Compiler: $(XCBASIC)
 
@@ -108,7 +122,7 @@ ifndef FILE
 	$(error FILE is required. Usage: make run FILE=examples/game.gtr)
 endif
 ifeq ($(strip $(EMULATOR)),)
-	$(error GAMETANK_EMULATOR is not set. Point it to your GameTank Emulator executable.)
+	$(error Emulator not found. Install gte or GameTankEmulator on PATH, or set GAMETANK_EMULATOR.)
 endif
 ifeq ($(OS),Windows_NT)
 	start "" "$(call FP,$(EMULATOR))" "$(call FP,$(abspath $(FILE)))"
@@ -121,7 +135,7 @@ ifndef FILE
 	$(error FILE is required. Usage: make build FILE=examples/game.bas)
 endif
 	"$(MAKE)" compile FILE=$(FILE)
-	"$(MAKE)" run FILE=$(GTRFILE) EMULATOR="$(EMULATOR)"
+	"$(MAKE)" run FILE=$(GTRFILE)
 
 clean:
 ifndef FILE
