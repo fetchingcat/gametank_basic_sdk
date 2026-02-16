@@ -45,18 +45,19 @@ XCBASIC := $(SDK_ROOT)/bin/$(PLATFORM)/xcbasic3$(EXE_EXT)
 DASM    := $(SDK_ROOT)/bin/$(PLATFORM)/dasm$(EXE_EXT)
 
 # Emulator auto-detection: checks GAMETANK_EMULATOR, then PATH for gte / GameTankEmulator
-ifeq ($(origin GAMETANK_EMULATOR),undefined)
-    ifeq ($(OS),Windows_NT)
-        EMULATOR := $(or \
-            $(shell where gte 2>nul), \
-            $(shell where GameTankEmulator 2>nul))
-    else
-        EMULATOR := $(or \
-            $(shell which gte 2>/dev/null), \
-            $(shell which GameTankEmulator 2>/dev/null))
-    endif
-else
+ifneq ($(strip $(GAMETANK_EMULATOR)),)
     EMULATOR := $(GAMETANK_EMULATOR)
+else
+    ifeq ($(OS),Windows_NT)
+        EMULATOR := $(firstword $(shell where gte 2>nul) $(shell where GameTankEmulator 2>nul))
+    else
+        EMULATOR := $(firstword $(shell which gte 2>/dev/null) $(shell which GameTankEmulator 2>/dev/null))
+    endif
+endif
+
+# Export so sub-makes inherit the detected emulator
+ifneq ($(strip $(EMULATOR)),)
+    export GAMETANK_EMULATOR := $(EMULATOR)
 endif
 
 # Compiler Flags
