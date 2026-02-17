@@ -47,7 +47,7 @@ make clean FILE=examples/hello          # Remove build artifacts
 The SDK includes VS Code task definitions for one-key build & run.
 
 1. Install the [XC=BASIC 3 extension](https://marketplace.visualstudio.com/items?itemName=realorlof.orlof-xcbasic3) for syntax highlighting
-2. Open the `gametank_sdk_basic` folder in VS Code
+2. Open the `gametank_basic_sdk` folder in VS Code
 3. Open any `.bas` file and press **Ctrl+Shift+B** (Windows/Linux) or **Cmd+Shift+B** (macOS) to compile and launch in the emulator
 
 The emulator is found the same way as the Makefile: `GAMETANK_EMULATOR` env var first, then `gte` or `GameTankEmulator` on PATH.
