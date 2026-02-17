@@ -1,0 +1,90 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "GameTank: Compile",
+      "type": "shell",
+      "command": "${workspaceFolder}/bin/${env:XCBASIC_PLATFORM}/xcbasic3",
+      "args": [
+        "${file}",
+        "${fileDirname}/${fileBasenameNoExtension}.gtr",
+        "--target=gametank",
+        "--output-format=gtr",
+        "--dasm=${workspaceFolder}/bin/${env:XCBASIC_PLATFORM}/dasm",
+        "--symbol=${fileDirname}/${fileBasenameNoExtension}.sym"
+      ],
+      "group": "build",
+      "problemMatcher": "$xcbasic3",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "windows": {
+        "command": "${workspaceFolder}\\bin\\windows\\xcbasic3.exe",
+        "args": [
+          "${file}",
+          "${fileDirname}\\${fileBasenameNoExtension}.gtr",
+          "--target=gametank",
+          "--output-format=gtr",
+          "--dasm=${workspaceFolder}\\bin\\windows\\dasm.exe",
+          "--symbol=${fileDirname}\\${fileBasenameNoExtension}.sym"
+        ]
+      },
+      "linux": {
+        "command": "${workspaceFolder}/bin/Linux/xcbasic3",
+        "args": [
+          "${file}",
+          "${fileDirname}/${fileBasenameNoExtension}.gtr",
+          "--target=gametank",
+          "--output-format=gtr",
+          "--dasm=${workspaceFolder}/bin/Linux/dasm",
+          "--symbol=${fileDirname}/${fileBasenameNoExtension}.sym"
+        ]
+      },
+      "osx": {
+        "command": "${workspaceFolder}/bin/macOS/xcbasic3",
+        "args": [
+          "${file}",
+          "${fileDirname}/${fileBasenameNoExtension}.gtr",
+          "--target=gametank",
+          "--output-format=gtr",
+          "--dasm=${workspaceFolder}/bin/macOS/dasm",
+          "--symbol=${fileDirname}/${fileBasenameNoExtension}.sym"
+        ]
+      }
+    },
+    {
+      "label": "GameTank: Run",
+      "type": "shell",
+      "command": "${workspaceFolder}/scripts/run_emulator.sh",
+      "args": [
+        "${fileDirname}/${fileBasenameNoExtension}.gtr"
+      ],
+      "windows": {
+        "command": "${workspaceFolder}\\scripts\\run_emulator.cmd",
+        "args": [
+          "${fileDirname}\\${fileBasenameNoExtension}.gtr"
+        ]
+      },
+      "group": "test",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "GameTank: Build & Run",
+      "dependsOn": [
+        "GameTank: Compile",
+        "GameTank: Run"
+      ],
+      "dependsOrder": "sequence",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
+}
