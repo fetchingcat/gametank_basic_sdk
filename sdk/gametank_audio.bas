@@ -80,7 +80,7 @@ gt_audio_fw_code:
 INCBIN "../sdk/audio_fw_code.bin"
 gt_audio_fw_code_end:
 
-' Sine + vectors: 256 bytes -> copied to $3F00 (=$0F00 on coproc)
+' Sine table: 256 bytes -> copied to $3E00 (=$0E00 on coproc)
 gt_audio_fw_sine:
 INCBIN "../sdk/audio_fw_sine.bin"
 gt_audio_fw_sine_end:
@@ -114,13 +114,19 @@ SUB gt_audio_init() SHARED STATIC
     size = @gt_audio_fw_code_end - @gt_audio_fw_code
     MEMCPY src, $3300, size
     
-    ' Copy Sine+Vectors chunk to $3F00 (256 bytes)
+    ' Copy Sine table to $3E00 (256 bytes)
     src = @gt_audio_fw_sine
     size = @gt_audio_fw_sine_end - @gt_audio_fw_sine
-    MEMCPY src, $3F00, size
+    MEMCPY src, $3E00, size
     
     ' Restore previous bank
     CALL gt_pop_rom_bank()
+    
+    ' Write 6502 vectors directly ($0FFA-$0FFF on coproc)
+    ' NMI=$0339, RESET=$0300, IRQ=$0312
+    POKE $3FFA, $39 : POKE $3FFB, $03
+    POKE $3FFC, $00 : POKE $3FFD, $03
+    POKE $3FFE, $12 : POKE $3FFF, $03
     
     ' Set audio rate to full speed
     POKE GT_AUDIO_RATE, 255
@@ -171,26 +177,12 @@ SUB gt_beep(note AS BYTE, frames AS BYTE) SHARED STATIC
     pitch_msb = PEEK(@gt_pitch_table + pitch_idx)
     pitch_lsb = PEEK(@gt_pitch_table + pitch_idx + 1)
     
-    ' Set pitch for all 4 operators of channel 0
-    ' Operator 0
+    ' Set pitch for operator 0 (single-voice firmware)
     CALL gt_audio_param(AUD_PITCH_MSB + 0, pitch_msb)
     CALL gt_audio_param(AUD_PITCH_LSB + 0, pitch_lsb)
-    ' Operator 1
-    CALL gt_audio_param(AUD_PITCH_MSB + 1, pitch_msb)
-    CALL gt_audio_param(AUD_PITCH_LSB + 1, pitch_lsb)
-    ' Operator 2
-    CALL gt_audio_param(AUD_PITCH_MSB + 2, pitch_msb)
-    CALL gt_audio_param(AUD_PITCH_LSB + 2, pitch_lsb)
-    ' Operator 3
-    CALL gt_audio_param(AUD_PITCH_MSB + 3, pitch_msb)
-    CALL gt_audio_param(AUD_PITCH_LSB + 3, pitch_lsb)
     
-    ' Set amplitude for channel 0 (simple square-ish tone)
-    ' Carrier operator (op 3) gets the volume, modulators shape the sound
-    CALL gt_audio_param(AUD_AMPLITUDE + 0, $40)  ' Modulator
-    CALL gt_audio_param(AUD_AMPLITUDE + 1, $00)  ' Off
-    CALL gt_audio_param(AUD_AMPLITUDE + 2, $00)  ' Off
-    CALL gt_audio_param(AUD_AMPLITUDE + 3, $5F)  ' Carrier (main volume)
+    ' Set amplitude: $00 = full volume, $40 = silence (phase-offset control)
+    CALL gt_audio_param(AUD_AMPLITUDE + 0, $00)  ' Full volume
     
     ' Send parameters to coprocessor
     CALL gt_audio_flush()
@@ -200,15 +192,10 @@ END SUB
 
 ' Stop any playing sound on channel 0
 SUB gt_audio_stop() SHARED STATIC
-    ' Set pitch to 0 to stop phase advancement (silences tone)
+    ' Set amplitude to $40 (silence) and zero pitch
+    CALL gt_audio_param(AUD_AMPLITUDE + 0, $40)
     CALL gt_audio_param(AUD_PITCH_MSB + 0, 0)
     CALL gt_audio_param(AUD_PITCH_LSB + 0, 0)
-    CALL gt_audio_param(AUD_PITCH_MSB + 1, 0)
-    CALL gt_audio_param(AUD_PITCH_LSB + 1, 0)
-    CALL gt_audio_param(AUD_PITCH_MSB + 2, 0)
-    CALL gt_audio_param(AUD_PITCH_LSB + 2, 0)
-    CALL gt_audio_param(AUD_PITCH_MSB + 3, 0)
-    CALL gt_audio_param(AUD_PITCH_LSB + 3, 0)
     CALL gt_audio_flush()
     gt_beep_frames = 0
 END SUB

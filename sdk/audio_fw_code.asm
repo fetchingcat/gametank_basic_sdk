@@ -31,10 +31,11 @@
 ; Constants (coprocessor addresses)
 ; ==========================================
 DAC         = $8000     ; Audio DAC output
+AccBuf      = $00       ; Accumulator buffer (temp)
 WavePtr     = $02       ; Wavetable pointer (2 bytes)
 PitchMSB    = $10       ; Pitch MSB
 PitchLSB    = $20       ; Pitch LSB
-Amplitude   = $30       ; Amplitude
+Amplitude   = $30       ; Amplitude (phase offset: $00=full, $40=silent)
 WavePhaseH  = $50       ; Wave phase high
 WavePhaseL  = $60       ; Wave phase low
 Inputs      = $70       ; Parameter input buffer
@@ -52,10 +53,10 @@ RESET:
     LDX #$FF
     TXS                 ; Initialize stack
     
-    ; Set wavetable pointer to $0F00 (sine table)
+    ; Set wavetable pointer to $0E00 (sine table)
     LDA #$00
     STA WavePtr
-    LDA #$0F
+    LDA #$0E
     STA WavePtr+1
     
     CLI                 ; Enable interrupts
@@ -66,6 +67,9 @@ Forever:
 
 ; ==========================================
 ; IRQ Handler - Generate audio sample
+; Volume uses phase-offset identity:
+;   sin(phase+amp) + sin(phase-amp) = 2*sin(phase)*cos(amp)
+;   Amplitude $00 = full volume, $40 = silence
 ; ==========================================
 IRQ:
     ; Advance phase for operator 0
@@ -77,13 +81,23 @@ IRQ:
     ADC PitchMSB
     STA WavePhaseH
     
-    ; Look up sine value using phase as index
-    TAY
-    LDA (WavePtr),Y
-    
-    ; Scale by amplitude
+    ; sin(phase + amplitude)
     CLC
     ADC Amplitude
+    TAY
+    LDA (WavePtr),Y
+    STA AccBuf              ; temp = sin(phase + amp)
+    
+    ; sin(phase - amplitude)
+    LDA WavePhaseH
+    SEC
+    SBC Amplitude
+    TAY
+    LDA (WavePtr),Y         ; A = sin(phase - amp)
+    
+    ; Sum: sin(phase+amp) + sin(phase-amp)
+    CLC
+    ADC AccBuf
     
     ; Bias to unsigned ($80 center)
     CLC

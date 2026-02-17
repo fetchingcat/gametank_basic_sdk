@@ -8,7 +8,7 @@
 ; === Zero Page Initialization ($00-$7F) ===
     DC.B 0              ; $00 AccBuf
     DC.B 0              ; $01 spare
-    DC.B $00, $0F       ; $02-$03 WavePtr -> $0F00 (Sine table)
+    DC.B $00, $0E       ; $02-$03 WavePtr -> $0E00 (Sine table)
     DC.B $80,$80,$80,$80 ; $04-$07 Feedback (neutral)
     DC.B 0,0,0,0,0,0,0,0 ; $08-$0F spare
     
@@ -16,9 +16,9 @@
     DC.B 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
     ; $20-$2F: Pitch LSB (16 operators)  
     DC.B 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0
-    ; $30-$3F: Amplitude (16 operators) - $80 = silent center
-    DC.B $80,$80,$80,$80, $80,$80,$80,$80
-    DC.B $80,$80,$80,$80, $80,$80,$80,$80
+    ; $30-$3F: Amplitude (16 operators) - $40 = silent (phase offset)
+    DC.B $40,$40,$40,$40, $40,$40,$40,$40
+    DC.B $40,$40,$40,$40, $40,$40,$40,$40
     ; $40-$4F: spare
     DC.B 0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0
     ; $50-$5F: Wave phase high (16 operators)
