@@ -141,10 +141,14 @@ DATA AS BYTE $7E,$02,$04,$18,$20,$40,$7E,$00
 _gt_text_end_data:
 
 ' --- Text System State Variables ---
-DIM _gt_cursor_x AS BYTE : _gt_cursor_x = 0
-DIM _gt_cursor_y AS BYTE : _gt_cursor_y = 0
-DIM _gt_text_color AS BYTE : _gt_text_color = 7
-DIM _gt_font_gram_y AS BYTE : _gt_font_gram_y = 0
+DIM _gt_cursor_x AS BYTE SHARED : _gt_cursor_x = 0
+DIM _gt_cursor_y AS BYTE SHARED : _gt_cursor_y = 0
+DIM _gt_text_color AS BYTE SHARED : _gt_text_color = 7
+DIM _gt_font_gram_y AS BYTE SHARED : _gt_font_gram_y = 0
+
+' Temp variables for optimized ASM print loop (SHARED for stable ASM names)
+DIM _gt_pt_ptr AS WORD SHARED
+DIM _gt_pt_slen AS BYTE SHARED
 
 ' --- Initialize text system - expand font to GRAM ---
 ' Call once at startup after gt_set_gram()
@@ -291,19 +295,113 @@ SUB gt_putchar(c AS BYTE) SHARED STATIC
     END IF
 END SUB
 
-' --- Print a null-terminated string ---
+' --- Print a length-prefixed string (DATA AS STRING format) ---
+' DATA AS STRING*N emits: [length_byte] [N bytes of content]
+' Optimized: DMA setup once, inline ASM loop with ZP indirect + bit ops
 SUB gt_print_str(addr AS WORD) SHARED STATIC
-    DIM ch AS BYTE
-    DIM i AS WORD
-    i = addr
-    DO
-        ch = PEEK(i)
-        IF ch = 0 THEN
-            EXIT DO
-        END IF
-        CALL gt_putchar(ch)
-        i = i + 1
-    LOOP
+    _gt_pt_slen = PEEK(addr)
+    IF _gt_pt_slen = 0 THEN
+        EXIT SUB
+    END IF
+    _gt_pt_ptr = addr + 1
+
+    ' Drain pending blit before changing DMA state
+    ASM
+._ptdrain:
+    LDA V_gt_draw_busy
+    BNE ._ptdrain
+    END ASM
+
+    ' Set up DMA registers once for all characters
+    POKE GT_DMA_FLAGS, gt_dma OR DMA_GCARRY OR DMA_IRQ
+    POKE GT_BANK_REG, (gt_bank AND (NOT BANK_GRAM_MASK)) OR gt_gram_page OR BANK_CLIP_X OR BANK_CLIP_Y
+    POKE GT_BWIDTH, 8
+    POKE GT_BHEIGHT, 8
+
+    ASM
+    ; Copy string pointer to ZP R0:R1 for (indirect),Y addressing
+    LDA V__gt_pt_ptr
+    STA R0
+    LDA V__gt_pt_ptr+1
+    STA R1
+
+    LDX V__gt_pt_slen       ; X = chars remaining
+    LDY #0                   ; Y = string offset
+
+    CLI                      ; Enable interrupts for DMA completion IRQ
+
+._ptloop:
+    LDA (R0),Y               ; Load next character
+
+    CMP #32                   ; Space?
+    BEQ ._pt_space            ; Skip blit, just advance cursor
+
+    ; Out of printable range → skip
+    BCC ._pt_next
+    CMP #91
+    BCS ._pt_next
+
+    ; char_code = A - 32
+    SEC
+    SBC #32
+
+    ; Compute GX = (char_code & $0F) << 3
+    PHA
+    AND #$0F
+    ASL
+    ASL
+    ASL
+    STA $4002                 ; GT_GX
+
+    ; Compute GY = font_gram_y + ((char_code & $30) >> 1)
+    PLA
+    AND #$30
+    LSR
+    CLC
+    ADC V__gt_font_gram_y
+    STA $4003                 ; GT_GY
+
+    ; Screen position
+    LDA V__gt_cursor_x
+    STA $4000                 ; GT_VX
+    LDA V__gt_cursor_y
+    STA $4001                 ; GT_VY
+
+    ; Trigger blit
+    LDA #1
+    STA V_gt_draw_busy
+    STA $4006                 ; GT_BSTART
+
+    ; Wait for DMA completion (polling - NMI safe)
+._ptwait:
+    LDA V_gt_draw_busy
+    BNE ._ptwait
+
+._pt_space:
+    ; Advance cursor by 8 pixels
+    LDA V__gt_cursor_x
+    CLC
+    ADC #8
+    CMP #128
+    BCC ._pt_no_wrap
+    ; Wrap X to 0, advance Y
+    LDA #0
+    STA V__gt_cursor_x
+    LDA V__gt_cursor_y
+    CLC
+    ADC #8
+    AND #$7F
+    STA V__gt_cursor_y
+    JMP ._pt_next
+._pt_no_wrap:
+    STA V__gt_cursor_x
+
+._pt_next:
+    INY
+    DEX
+    BNE ._ptloop
+
+    END ASM
 END SUB
 
 ' --- Print a byte as decimal (0-255) ---

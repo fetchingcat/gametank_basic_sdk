@@ -79,6 +79,8 @@ main_loop:
     NEXT i
 
     CALL gt_direct_end()
+    
+    CALL gt_border(0)
     CALL gt_show()
 
 GOTO main_loop

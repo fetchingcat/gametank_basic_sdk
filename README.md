@@ -96,16 +96,35 @@ The emulator is found the same way as the Makefile: `GAMETANK_EMULATOR` env var 
 
 | Function | Description |
 |----------|-------------|
-| `gt_audio_init()` | Load audio firmware |
-| `gt_beep(note,frames)` | Play MIDI note (36-96) |
-| `gt_audio_tick()` | Update audio (call each frame) |
-| `gt_audio_stop()` | Stop all audio playback |
-| `gt_audio_param(param,value)` | Set raw audio parameter |
-| `gt_audio_flush()` | Send buffered params to coprocessor |
-| `gt_sfx_blip()` | UI blip |
-| `gt_sfx_shoot()` | Shoot sound |
-| `gt_sfx_explode()` | Explosion |
-| `gt_sfx_pickup()` | Pickup/coin |
+| `gt_audio_init()` | Initialize audio coprocessor (loads firmware from bank 0) |
+| `gt_beep(note,frames)` | Quick note on ch 0 for N frames |
+| `gt_song_tick()` | Advance song + update envelopes (call each frame when playing songs) |
+| `gt_audio_tick()` | Update envelopes only (call each frame when using notes/SFX without songs) |
+| `gt_audio_stop()` | Stop beep on channel 0 |
+| `gt_audio_param(param,value)` | Queue raw coprocessor parameter |
+| `gt_audio_flush()` | Send queued params to coprocessor |
+| `gt_sfx_blip()` | UI blip sound effect |
+| `gt_sfx_shoot()` | Shoot sound effect |
+| `gt_sfx_explode()` | Explosion sound effect |
+| `gt_sfx_pickup()` | Pickup/coin sound effect |
+| `gt_load_instrument(ch,instr_id)` | Load instrument preset into channel (0-3) |
+| `gt_note_on(ch,note)` | Start note on channel (MIDI 0-107, 60=middle C) |
+| `gt_note_off(ch)` | Stop note on channel |
+| `gt_silence_all()` | Silence all channels immediately |
+| `gt_song_play(addr,loop)` | Play song from MIDI .bin (1=loop, 0=once) |
+| `gt_song_stop()` | Stop current song |
+
+**Instrument constants** for `gt_load_instrument`:
+
+| Constant | ID |
+|----------|-----|
+| `GT_INSTR_PIANO` | 1 |
+| `GT_INSTR_GUITAR` | 2 |
+| `GT_INSTR_GUITAR2` | 3 |
+| `GT_INSTR_SLAPBASS` | 4 |
+| `GT_INSTR_SNARE` | 5 |
+| `GT_INSTR_SITAR` | 6 |
+| `GT_INSTR_HORN` | 7 |
 
 ## Examples
 

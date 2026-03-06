@@ -89,6 +89,7 @@ main_loop:
     CALL gt_print_str(@lbl_c6)
 
     CALL gt_audio_tick()
+    CALL gt_border(0)
     CALL gt_show()
 GOTO main_loop
 

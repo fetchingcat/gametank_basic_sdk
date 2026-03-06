@@ -241,9 +241,9 @@ END SUB
 
 SUB draw_player_hand() STATIC
     DIM x AS BYTE
-    x = 0
+    x = 2
     FOR i = 0 TO player_count - 1
-        CALL draw_card(x, 72, player_hand(i), 1)
+        CALL draw_card(x, 68, player_hand(i), 1)
         x = x + CARD_W
     NEXT i
 END SUB
@@ -251,14 +251,14 @@ END SUB
 SUB draw_dealer_hand() STATIC
     DIM x AS BYTE
     DIM face AS BYTE
-    x = 0
+    x = 2
     FOR i = 0 TO dealer_count - 1
         IF i = 0 AND show_hole = 0 THEN
             face = 0
         ELSE
             face = 1
         END IF
-        CALL draw_card(x, 24, dealer_hand(i), face)
+        CALL draw_card(x, 28, dealer_hand(i), face)
         x = x + CARD_W
     NEXT i
 END SUB
@@ -353,14 +353,14 @@ SUB dealer_play() STATIC
 END SUB
 
 SUB draw_screen() STATIC
-    CALL gt_locate_px(24, 5)
+    CALL gt_locate_px(26, 9)
     CALL gt_print_str(@str_title)
     
-    CALL gt_locate(0, 15)
+    CALL gt_locate_px(2, 112)
     CALL gt_print_str(@str_chips)
     CALL gt_print_word(chips)
     
-    CALL gt_locate(0, 2)
+    CALL gt_locate_px(2, 20)
     CALL gt_print_str(@str_dealer)
     IF show_hole = 1 THEN
         CALL gt_print_byte(dealer_total)
@@ -374,7 +374,7 @@ SUB draw_screen() STATIC
         CALL draw_dealer_hand()
     END IF
     
-    CALL gt_locate(0, 8)
+    CALL gt_locate_px(2, 60)
     CALL gt_print_str(@str_player)
     IF game_state > 0 THEN
         player_total = calc_player_hand()  ' Recalculate to be sure
@@ -388,22 +388,22 @@ SUB draw_screen() STATIC
     
     IF game_state = 0 THEN
         ' Betting phase
-        CALL gt_locate(0, 6)
+        CALL gt_locate_px(2, 52)
         CALL gt_print_str(@str_betamt)
         CALL gt_print_byte(bet)
-        CALL gt_locate(0, 13)
+        CALL gt_locate_px(2, 96)
         CALL gt_print_str(@str_placebet)
     END IF
     IF game_state = 1 THEN
         ' Player's turn
-        CALL gt_locate(0, 13)
+        CALL gt_locate_px(2, 96)
         CALL gt_print_str(@str_hit)
-        CALL gt_locate(8, 13)
+        CALL gt_locate_px(66, 96)
         CALL gt_print_str(@str_stand)
     END IF
     IF game_state = 3 THEN
         ' Show result
-        CALL gt_locate(4, 13)
+        CALL gt_locate_px(34, 96)
         IF result = 1 THEN
             CALL gt_print_str(@str_win)
         END IF
@@ -413,12 +413,12 @@ SUB draw_screen() STATIC
         IF result = 3 THEN
             CALL gt_print_str(@str_push)
         END IF
-        CALL gt_locate(2, 14)
+        CALL gt_locate_px(18, 104)
         CALL gt_print_str(@str_newgame)
     END IF
     
     IF game_state <> 0 THEN
-        CALL gt_locate(9, 15)
+        CALL gt_locate_px(74, 112)
         CALL gt_print_str(@str_betamt)
         CALL gt_print_byte(bet)
     END IF
@@ -447,15 +447,14 @@ game_state = 0
 CALL start_deal()
 
 main_loop:
-    CALL gt_vsync()
-    
     rnd_seed = rnd_seed + 1
     
     CALL gt_cls(249)
     
     CALL draw_screen()
     
-    CALL gt_flip()
+    CALL gt_border(0)
+    CALL gt_show()
     
     CALL gt_read_pad()
     

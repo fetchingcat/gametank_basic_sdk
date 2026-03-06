@@ -30,10 +30,6 @@ CALL gt_set_gram(0)
 CALL gt_text_color(7)
 CALL gt_text_init()
 
-CALL gt_cls(0)
-CALL gt_show()
-CALL gt_cls(0)
-
 main_loop:
 frames = frames + 1
 IF frames >= 60 THEN
@@ -157,5 +153,6 @@ CALL gt_print_byte(ticks_lo)
 CALL gt_locate(2, 14)
 CALL gt_print_str(@str_reset)
 
+CALL gt_border(0)
 CALL gt_show()
 GOTO main_loop

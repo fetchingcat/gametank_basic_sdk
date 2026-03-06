@@ -132,12 +132,14 @@ ASM
     BNE ._rst_audio
     LDA #$04
     STA $2801
-    LDA #$05
+    LDA #$45            ; DMA_NMI | DMA_IRQ | DMA_ENABLE
     STA $2007
     STA V_gt_dma
     LDA #$08
     STA $2005
     STA V_gt_bank
+    LDA #0
+    STA V_gt_draw_busy  ; Initialize to not-busy
 END ASM
 
 GOTO _gt_sdk_end
@@ -153,6 +155,14 @@ SUB gt_vsync() SHARED STATIC
 END SUB
 
 SUB gt_flip() SHARED STATIC
+    ' Drain any in-flight DMA before changing framebuffer page registers.
+    ' Without this, a blit still writing to the back buffer could be
+    ' redirected mid-write to the front buffer by the POKE below.
+    ASM
+._gt_flip_drain:
+    LDA V_gt_draw_busy
+    BNE ._gt_flip_drain
+    END ASM
     gt_dma = gt_dma XOR DMA_PAGE_OUT
     gt_bank = gt_bank XOR BANK_FRAMEBUFFER
     POKE GT_DMA_FLAGS, gt_dma
@@ -227,7 +237,14 @@ SUB gt_pop_rom_bank() SHARED STATIC
 END SUB
 
 SUB gt_box(x AS BYTE, y AS BYTE, w AS BYTE, h AS BYTE, c AS BYTE) SHARED STATIC
-    POKE GT_DMA_FLAGS, gt_dma OR DMA_COLORFILL OR DMA_OPAQUE OR DMA_IRQ
+    ' Wait for previous blit to finish
+    ASM
+._boxdrain:
+    LDA V_gt_draw_busy
+    BNE ._boxdrain
+    END ASM
+    POKE GT_DMA_FLAGS, gt_dma OR DMA_COLORFILL OR DMA_OPAQUE
+    POKE GT_BANK_REG, gt_bank OR BANK_CLIP_X OR BANK_CLIP_Y
     POKE GT_VX, x
     POKE GT_VY, y
     POKE GT_BWIDTH, w
@@ -235,17 +252,17 @@ SUB gt_box(x AS BYTE, y AS BYTE, w AS BYTE, h AS BYTE, c AS BYTE) SHARED STATIC
     POKE GT_BCOLOR, NOT c
     gt_draw_busy = 1
     POKE GT_BSTART, 1
-    ASM
-    CLI
-._boxwait:
-    LDA V_gt_draw_busy
-    BNE ._boxwait
-    END ASM
-    POKE GT_DMA_FLAGS, gt_dma
 END SUB
 
 SUB gt_cls(c AS BYTE) SHARED STATIC
-    POKE GT_DMA_FLAGS, gt_dma OR DMA_COLORFILL OR DMA_OPAQUE OR DMA_IRQ
+    ' Wait for previous blit to finish
+    ASM
+._clsdrain:
+    LDA V_gt_draw_busy
+    BNE ._clsdrain
+    END ASM
+    POKE GT_DMA_FLAGS, gt_dma OR DMA_COLORFILL OR DMA_OPAQUE
+    POKE GT_BANK_REG, gt_bank OR BANK_CLIP_X OR BANK_CLIP_Y
     POKE GT_VX, 0
     POKE GT_VY, 0
     POKE GT_BWIDTH, 127
@@ -253,14 +270,6 @@ SUB gt_cls(c AS BYTE) SHARED STATIC
     POKE GT_BCOLOR, NOT c
     gt_draw_busy = 1
     POKE GT_BSTART, 1
-    ' CLI then WAI - wait for blitter IRQ
-    ASM
-    CLI
-._clswait:
-    LDA V_gt_draw_busy
-    BNE ._clswait
-    END ASM
-    POKE GT_DMA_FLAGS, gt_dma
 END SUB
 
 ' Fill border/overscan region with color c (typically 0 for black).
@@ -306,7 +315,14 @@ SUB gt_draw_sprite(gx AS BYTE, gy AS BYTE, vx AS BYTE, vy AS BYTE, w AS BYTE, h 
     DIM flags AS BYTE
     DIM banks AS BYTE
     
-    flags = gt_dma OR DMA_GCARRY OR DMA_IRQ
+    ' Wait for previous blit to finish
+    ASM
+._spdrain:
+    LDA V_gt_draw_busy
+    BNE ._spdrain
+    END ASM
+    
+    flags = gt_dma OR DMA_GCARRY
     IF opaque <> 0 THEN
         flags = flags OR DMA_OPAQUE
     END IF
@@ -324,21 +340,18 @@ SUB gt_draw_sprite(gx AS BYTE, gy AS BYTE, vx AS BYTE, vy AS BYTE, w AS BYTE, h 
     POKE GT_BHEIGHT, h
     gt_draw_busy = 1
     POKE GT_BSTART, 1
-    ASM
-    CLI
-._spwait:
-    LDA V_gt_draw_busy
-    BNE ._spwait
-    END ASM
-    
-    POKE GT_DMA_FLAGS, gt_dma
-    POKE GT_BANK_REG, gt_bank
 END SUB
 
 SUB gt_gram_poke(x AS BYTE, y AS BYTE, c AS BYTE) SHARED STATIC
     DIM addr AS WORD
     DIM yoff AS WORD
     
+    ' Drain pending blit before changing DMA state
+    ASM
+._gpkdrain:
+    LDA V_gt_draw_busy
+    BNE ._gpkdrain
+    END ASM
     ' Set up bank and do dummy blit to select quadrant 0
     POKE GT_BANK_REG, gt_gram_page
     POKE GT_DMA_FLAGS, DMA_NMI OR DMA_ENABLE OR DMA_GCARRY
@@ -367,6 +380,12 @@ SUB gt_gram_fill(x AS BYTE, y AS BYTE, w AS BYTE, h AS BYTE, c AS BYTE) SHARED S
     DIM addr AS WORD
     DIM yoff AS WORD
     
+    ' Drain pending blit before changing DMA state
+    ASM
+._gfldrain:
+    LDA V_gt_draw_busy
+    BNE ._gfldrain
+    END ASM
     ' Set up bank and do dummy blit to select quadrant 0
     POKE GT_BANK_REG, gt_gram_page
     POKE GT_DMA_FLAGS, DMA_NMI OR DMA_ENABLE OR DMA_GCARRY
@@ -407,6 +426,12 @@ SUB gt_load_sprite(src AS WORD, gx AS BYTE, gy AS BYTE, w AS BYTE, h AS BYTE) SH
     DIM yoff AS WORD
     DIM c AS BYTE
     
+    ' Drain pending blit before changing DMA state
+    ASM
+._lspdrain:
+    LDA V_gt_draw_busy
+    BNE ._lspdrain
+    END ASM
     ' Set up bank and do dummy blit to select quadrant 0
     POKE GT_BANK_REG, gt_gram_page
     POKE GT_DMA_FLAGS, DMA_NMI OR DMA_ENABLE OR DMA_GCARRY
@@ -457,10 +482,12 @@ SUB gt_pset(x AS BYTE, y AS BYTE, c AS BYTE) SHARED STATIC
     DIM yoff AS WORD
     DIM flags AS BYTE
     
-    ' Wait for any blitter operation to complete
-    DO WHILE gt_draw_busy <> 0
-    LOOP
-    
+    ' Drain pending blit before changing DMA state
+    ASM
+._pstdrain:
+    LDA V_gt_draw_busy
+    BNE ._pstdrain
+    END ASM
     ' Set up for direct CPU write to framebuffer
     ' Enable CPU->VRAM, disable blitter
     flags = (gt_dma OR DMA_CPU_TO_VRAM) AND (NOT DMA_ENABLE)
@@ -486,10 +513,12 @@ END SUB
 SUB gt_direct_start() SHARED STATIC
     DIM flags AS BYTE
     
-    ' Wait for any blitter operation to complete
-    DO WHILE gt_draw_busy <> 0
-    LOOP
-    
+    ' Drain pending blit before changing DMA state
+    ASM
+._dsdrain:
+    LDA V_gt_draw_busy
+    BNE ._dsdrain
+    END ASM
     ' Enable CPU->VRAM, disable blitter
     flags = (gt_dma OR DMA_CPU_TO_VRAM) AND (NOT DMA_ENABLE)
     POKE GT_DMA_FLAGS, flags

@@ -14,6 +14,7 @@ loop:
     CALL gt_cls(0)                  ' clear the frame buffer to 0
     CALL gt_locate(2, 7)            ' set text cursor to column 2, row 7
     CALL gt_print_str(@str_hello)   ' print the string at the current cursor position
+    CALL gt_border(0)               ' set border color to 0 (black)
     CALL gt_show()                  ' wait for vsync, then flip the frame buffer to display the text
 
 GOTO loop
