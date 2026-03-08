@@ -13,6 +13,8 @@ DIM new_lo AS BYTE
 DIM new_hi AS BYTE
 DIM name_idx AS BYTE
 DIM octave AS BYTE
+DIM roll_timer AS BYTE
+CONST ROLL_INTERVAL = 8  ' frames between snare roll hits
 
 CALL gt_audio_init()
 CALL gt_set_gram(0)
@@ -27,10 +29,13 @@ note = 60
 instr_id = 1
 prev_lo = 0
 prev_hi = 0
+roll_timer = 0
 
 main_loop:
     CALL gt_cls(0)
     CALL gt_read_pad()
+
+    CALL gt_audio_tick()
 
     ' Edge detect new presses
     new_lo = gt_pad1 AND (gt_pad1 XOR prev_lo)
@@ -42,12 +47,28 @@ main_loop:
         CALL gt_note_on(0, note)
     END IF
 
-    ' B = chord
-    IF (new_hi AND BTN_B) <> 0 THEN
-        CALL gt_note_on(0, note)
-        CALL gt_note_on(1, note + 4)
-        CALL gt_note_on(2, note + 7)
-        CALL gt_note_on(3, note + 12)
+    ' B = chord, or snare roll when snare is selected
+    IF instr_id = GT_INSTR_SNARE THEN
+        ' Snare: hold B for rapid re-trigger roll
+        IF (gt_pad1_hi AND BTN_B) <> 0 THEN
+            IF roll_timer = 0 THEN
+                CALL gt_note_off(0)
+                CALL gt_note_on(0, note)
+                roll_timer = ROLL_INTERVAL
+            ELSE
+                roll_timer = roll_timer - 1
+            END IF
+        ELSE
+            roll_timer = 0
+        END IF
+    ELSE
+        ' Other instruments: B = chord
+        IF (new_hi AND BTN_B) <> 0 THEN
+            CALL gt_note_on(0, note)
+            CALL gt_note_on(1, note + 4)
+            CALL gt_note_on(2, note + 7)
+            CALL gt_note_on(3, note + 12)
+        END IF
     END IF
 
     IF (new_hi AND BTN_C) <> 0 THEN
@@ -111,14 +132,16 @@ main_loop:
     CALL gt_locate(0, 10)
     CALL gt_print_str(@lbl_c3)
     CALL gt_locate(0, 11)
-    CALL gt_print_str(@lbl_c4)
+    IF instr_id = GT_INSTR_SNARE THEN
+        CALL gt_print_str(@lbl_c4b)
+    ELSE
+        CALL gt_print_str(@lbl_c4)
+    END IF
     CALL gt_locate(0, 12)
     CALL gt_print_str(@lbl_c5)
     CALL gt_locate(0, 13)
     CALL gt_print_str(@lbl_c6)
 
-    CALL gt_audio_tick()
-    
     CALL gt_border(0)
     CALL gt_show()
 GOTO main_loop
@@ -155,6 +178,8 @@ lbl_c3:
 DATA AS STRING*14 "  A   = PLAY"
 lbl_c4:
 DATA AS STRING*14 "  B   = CHORD"
+lbl_c4b:
+DATA AS STRING*14 "  B   = ROLL"
 lbl_c5:
 DATA AS STRING*14 "  C   = STOP"
 lbl_c6:

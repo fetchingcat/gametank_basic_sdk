@@ -43,6 +43,7 @@ DIM gt_op_trans(16) AS BYTE SHARED
 DIM gt_ch_offset(4) AS INT SHARED      ' Signed channel transpose (from instrument)
 DIM gt_note_held AS BYTE SHARED        ' Bitmask of channels with active notes
 DIM gt_audio_param_idx AS BYTE SHARED
+DIM gt_defer_nmi AS BYTE SHARED        ' When non-zero, NMI fire is deferred (for atomic updates)
 
 gt_ch_masks:
 DATA AS BYTE 1, 2, 4, 8
@@ -200,6 +201,7 @@ SUB gt_audio_init() SHARED STATIC
     gt_note_held = 0
     gt_beep_frames = 0
     gt_audio_param_idx = 0
+    gt_defer_nmi = 0
 
     FOR i = 0 TO 15
         gt_amp(i) = 0
@@ -244,21 +246,21 @@ SUB gt_note_on(ch AS BYTE, note AS BYTE) SHARED STATIC
     NEXT i
 
     gt_note_held = gt_note_held OR PEEK(@gt_ch_masks + ch)
-    POKE GT_AUDIO_NMI, 1
+    IF gt_defer_nmi = 0 THEN POKE GT_AUDIO_NMI, 1
 END SUB
 
 ' Stop a note on channel (0-3).
+' Only silences op3 (output operator), matching C SDK tick_music().
+' Internal operators 0-2 continue at sustain levels to preserve
+' feedback state for the next note.
 SUB gt_note_off(ch AS BYTE) SHARED STATIC
     DIM base_op AS BYTE
-    DIM i AS BYTE
 
     base_op = ch * 4
-    FOR i = 0 TO 3
-        gt_amp(base_op + i) = 0
-        POKE GT_ARAM + AUD_AMPLITUDE + base_op + i, 128
-    NEXT i
+    gt_amp(base_op + 3) = 0
+    POKE GT_ARAM + AUD_AMPLITUDE + base_op + 3, 128
     gt_note_held = gt_note_held AND (PEEK(@gt_ch_masks + ch) XOR $FF)
-    POKE GT_AUDIO_NMI, 1
+    IF gt_defer_nmi = 0 THEN POKE GT_AUDIO_NMI, 1
 END SUB
 
 ' Update envelopes and song sequencer. Call once per frame.
@@ -292,7 +294,7 @@ SUB gt_audio_tick() SHARED STATIC
         ch_mask = ch_mask + ch_mask
     NEXT ch
 
-    POKE GT_AUDIO_NMI, 1
+    IF gt_defer_nmi = 0 THEN POKE GT_AUDIO_NMI, 1
 
     IF gt_beep_frames > 0 THEN
         gt_beep_frames = gt_beep_frames - 1
@@ -393,15 +395,14 @@ SUB gt_song_tick() SHARED STATIC
     DIM ch AS BYTE
     DIM n AS BYTE
 
-    IF gt_song_active = 0 THEN
-        CALL gt_audio_tick()
-        RETURN
-    END IF
+    gt_defer_nmi = 1
+    CALL gt_audio_tick()
+
+    IF gt_song_active = 0 THEN GOTO _gt_song_flush
 
     IF gt_song_delay > 0 THEN
         gt_song_delay = gt_song_delay - 1
-        CALL gt_audio_tick()
-        RETURN
+        GOTO _gt_song_flush
     END IF
 
     _gt_seq_event:
@@ -435,12 +436,14 @@ SUB gt_song_tick() SHARED STATIC
             gt_song_active = 0
             CALL gt_silence_all()
         END IF
-        CALL gt_audio_tick()
-        RETURN
+        GOTO _gt_song_flush
     END IF
 
     gt_song_delay = gt_song_delay - 1
-    CALL gt_audio_tick()
+
+    _gt_song_flush:
+    gt_defer_nmi = 0
+    POKE GT_AUDIO_NMI, 1
 END SUB
 
 _gt_fullaudio_end:
